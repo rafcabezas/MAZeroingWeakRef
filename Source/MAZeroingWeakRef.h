@@ -52,6 +52,7 @@
 #define __has_feature(feature) 0
 #endif
 
+#define weak(className)           MAZeroingWeakRef
 #define MAWeakVar(var)            __weak_ ## var
 
 #if __has_feature(objc_arc_weak)
