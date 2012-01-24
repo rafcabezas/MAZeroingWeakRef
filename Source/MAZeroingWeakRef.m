@@ -652,6 +652,9 @@ static void UnregisterRef(MAZeroingWeakRef *ref)
 
 - (id)initWithTarget: (id)target
 {
+    if (!target)
+        return nil;
+    
     if((self = [self init]))
     {
         if(objc_storeWeak_fptr && CanNativeZWR(target))
