@@ -17,7 +17,7 @@
 #import <mach/mach.h>
 #import <mach/port.h>
 #import <pthread.h>
-
+#import "RootVC.h"
 
 /*
  The COREFOUNDATION_HACK_LEVEL macro allows you to control how much horrible CF
@@ -733,11 +733,18 @@ static void UnregisterRef(MAZeroingWeakRef *ref)
     }
     else
     {
-        BLOCK_QUALIFIER id ret;
-        WhileLocked({
-            ret = [_target retain];
-        });
-        return [ret autorelease];
+        if ([RootVC sharedInstance].iOSVersion >= 4.0) {
+            BLOCK_QUALIFIER id ret;
+            WhileLocked({
+                ret = [_target retain];
+            });
+            return [ret autorelease];
+        }
+        else {
+            id ret;
+                ret = [_target retain];
+            return [ret autorelease];
+        }
     }
 }
 
