@@ -19,6 +19,11 @@
 #import <mach/port.h>
 #import <pthread.h>
 
+#ifdef TARGET_OS_IPHONE
+#import <UIKit/UIDevice.h>
+#endif
+
+
 /*
  The COREFOUNDATION_HACK_LEVEL macro allows you to control how much horrible CF
  hackery is enabled. The following levels are defined:
@@ -735,7 +740,7 @@ static void UnregisterRef(MAZeroingWeakRef *ref)
     {
         static double iOSVersion = 0;
         
-#ifdef REMOTER_MAC
+#ifndef TARGET_OS_IPHONE
         iOSVersion = 5.0;
 #else
         if (!iOSVersion)
