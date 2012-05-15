@@ -9,6 +9,7 @@
 
 #import "MAZeroingWeakRefNativeZWRNotAllowedTable.h"
 
+
 #import <CommonCrypto/CommonDigest.h>
 
 #import <dlfcn.h>
@@ -17,7 +18,6 @@
 #import <mach/mach.h>
 #import <mach/port.h>
 #import <pthread.h>
-#import "RootVC.h"
 
 /*
  The COREFOUNDATION_HACK_LEVEL macro allows you to control how much horrible CF
@@ -733,7 +733,16 @@ static void UnregisterRef(MAZeroingWeakRef *ref)
     }
     else
     {
-        if ([RootVC sharedInstance].iOSVersion >= 4.0) {
+        static double iOSVersion = 0;
+        
+#ifdef REMOTER_MAC
+        iOSVersion = 5.0;
+#else
+        if (!iOSVersion)
+            iOSVersion = [[[UIDevice currentDevice] systemVersion] doubleValue];
+#endif
+
+        if (iOSVersion >= 4.0) {
             BLOCK_QUALIFIER id ret;
             WhileLocked({
                 ret = [_target retain];
