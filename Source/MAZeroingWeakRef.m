@@ -19,7 +19,7 @@
 #import <mach/port.h>
 #import <pthread.h>
 
-#ifdef TARGET_OS_IPHONE
+#if (TARGET_OS_IPHONE==1)
 #import <UIKit/UIDevice.h>
 #endif
 
@@ -740,13 +740,12 @@ static void UnregisterRef(MAZeroingWeakRef *ref)
     {
         static double iOSVersion = 0;
         
-#ifndef TARGET_OS_IPHONE
-        iOSVersion = 5.0;
-#else
+#if (TARGET_OS_IPHONE==1)
         if (!iOSVersion)
             iOSVersion = [[[UIDevice currentDevice] systemVersion] doubleValue];
+#else
+        iOSVersion = 5.0;
 #endif
-
         if (iOSVersion >= 4.0) {
             BLOCK_QUALIFIER id ret;
             WhileLocked({
