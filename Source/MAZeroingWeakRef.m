@@ -23,7 +23,6 @@
 #import <UIKit/UIDevice.h>
 #endif
 
-
 /*
  The COREFOUNDATION_HACK_LEVEL macro allows you to control how much horrible CF
  hackery is enabled. The following levels are defined:
@@ -159,15 +158,20 @@ static NSOperationQueue *gCFDelayedDestructionQueue;
     if(self == [MAZeroingWeakRef class])
     {
         pthread_mutexattr_t mutexattr;
+#ifndef COCOTRON
         pthread_mutexattr_init(&mutexattr);
         pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
+#endif
         pthread_mutex_init(&gMutex, &mutexattr);
+#ifndef COCOTRON
         pthread_mutexattr_destroy(&mutexattr);
+#endif
         
         gObjectWeakRefsMap = CFDictionaryCreateMutable(NULL, 0, NULL, &kCFTypeDictionaryValueCallBacks);
         gCustomSubclasses = [[NSMutableSet alloc] init];
         gCustomSubclassMap = [[NSMutableDictionary alloc] init];
-        
+      
+#ifndef COCOTRON
         // see if the 10.7 ZWR runtime functions are available
         // nothing special about objc_allocateClassPair, it just
         // seems like a reasonable and safe choice for finding
@@ -193,6 +197,10 @@ static NSOperationQueue *gCFDelayedDestructionQueue;
                 }
             }
         }
+#else
+        objc_loadWeak_fptr = NULL;
+        objc_storeWeak_fptr = NULL;
+#endif
         
 #if COREFOUNDATION_HACK_LEVEL >= 3
         gCFWeakTargets = CFSetCreateMutable(NULL, 0, NULL);
@@ -518,6 +526,15 @@ static BOOL CanNativeZWRClass(Class c)
         return YES;
     
     const char *name = class_getName(c);
+#ifdef COCOTRON //FIXME FIX FIX
+    unsigned char hash[64];
+    memset(hash, 0, 64);
+    strncpy(hash, name, MIN(strlen(name), 63));
+    if(HashPresentInTable(hash, 64, _MAZeroingWeakRefClassNativeWeakReferenceNotAllowedTable))
+        return NO;
+    else
+        return CanNativeZWRClass(class_getSuperclass(c));
+#else
     unsigned char hash[CC_SHA1_DIGEST_LENGTH];
     CC_SHA1(name, strlen(name), hash);
     
@@ -525,6 +542,7 @@ static BOOL CanNativeZWRClass(Class c)
         return NO;
     else
         return CanNativeZWRClass(class_getSuperclass(c));
+#endif
 }
 
 static BOOL CanNativeZWR(id obj)
