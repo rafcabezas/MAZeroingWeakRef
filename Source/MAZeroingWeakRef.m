@@ -143,7 +143,7 @@ extern Class *__CFRuntimeObjCClassTable;
 
 static pthread_mutex_t gMutex;
 
-static CFMutableDictionaryRef gObjectWeakRefsMap; // maps (non-retained) objects to CFMutableSetRefs containing weak refs
+static NSMutableDictionary *gObjectWeakRefsMap; // maps (non-retained) objects to CFMutableSetRefs containing weak refs
 
 static NSMutableSet *gCustomSubclasses;
 static NSMutableDictionary *gCustomSubclassMap; // maps regular classes to their custom subclasses
@@ -158,16 +158,12 @@ static NSOperationQueue *gCFDelayedDestructionQueue;
     if(self == [MAZeroingWeakRef class])
     {
         pthread_mutexattr_t mutexattr;
-#ifndef COCOTRON
         pthread_mutexattr_init(&mutexattr);
         pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
-#endif
         pthread_mutex_init(&gMutex, &mutexattr);
-#ifndef COCOTRON
         pthread_mutexattr_destroy(&mutexattr);
-#endif
-        
-        gObjectWeakRefsMap = CFDictionaryCreateMutable(NULL, 0, NULL, &kCFTypeDictionaryValueCallBacks);
+
+        gObjectWeakRefsMap = [[NSMutableDictionary alloc] init];
         gCustomSubclasses = [[NSMutableSet alloc] init];
         gCustomSubclassMap = [[NSMutableDictionary alloc] init];
       
@@ -230,33 +226,49 @@ static void WhileLocked(void (^block)(void))
 
 static void AddWeakRefToObject(id obj, MAZeroingWeakRef *ref)
 {
-    CFMutableSetRef set = (void *)CFDictionaryGetValue(gObjectWeakRefsMap, obj);
+    NSString *objStr = [NSString stringWithFormat:@"%p", objStr];
+    NSMutableSet *set = (NSMutableSet *)[gObjectWeakRefsMap objectForKey:objStr];
     if(!set)
     {
-        set = CFSetCreateMutable(NULL, 0, NULL);
-        CFDictionarySetValue(gObjectWeakRefsMap, obj, set);
-        CFRelease(set);
+        set = [[NSMutableSet alloc] initWithObjects:[NSValue valueWithPointer:ref], nil];
+        [gObjectWeakRefsMap setObject:set forKey:objStr];
+        [set release];
     }
-    CFSetAddValue(set, ref);
+    else
+        [set addObject:[NSValue valueWithPointer:ref]];
 }
 
 static void RemoveWeakRefFromObject(id obj, MAZeroingWeakRef *ref)
 {
-    CFMutableSetRef set = (void *)CFDictionaryGetValue(gObjectWeakRefsMap, obj);
-    CFSetRemoveValue(set, ref);
+    NSString *objStr = [NSString stringWithFormat:@"%p", objStr];
+    NSMutableSet *set = (NSMutableSet *)[gObjectWeakRefsMap objectForKey:objStr];
+    if (set) {
+        for (NSValue *valuePtr in set) {
+            if ([valuePtr pointerValue] == ref) {
+                [set removeObject:valuePtr];
+                break;
+            }
+        }
+    }
 }
 
 static void ClearWeakRefsForObject(id obj)
 {
-    CFMutableSetRef set = (void *)CFDictionaryGetValue(gObjectWeakRefsMap, obj);
+    NSString *objStr = [NSString stringWithFormat:@"%p", objStr];
+    NSMutableSet *set = (NSMutableSet *)[gObjectWeakRefsMap objectForKey:objStr];
     if(set)
     {
-        NSSet *setCopy = [[NSSet alloc] initWithSet: (NSSet *)set];
-        [setCopy makeObjectsPerformSelector: @selector(_zeroTarget)];
-        [setCopy makeObjectsPerformSelector: @selector(_executeCleanupBlockWithTarget:) withObject: obj];
-        [setCopy release];
-        CFDictionaryRemoveValue(gObjectWeakRefsMap, obj);
+        for (NSValue *valuePtr in set) {
+            MAZeroingWeakRef *ref = (MAZeroingWeakRef *)[valuePtr pointerValue];
+            if (ref) {
+                [ref _zeroTarget];
+                [ref _executeCleanupBlockWithTarget:obj];
+            }
+        }
+        
+        [set removeAllObjects];
     }
+    [gObjectWeakRefsMap removeObjectForKey:objStr];
 }
 
 static Class GetCustomSubclass(id obj)
@@ -526,14 +538,8 @@ static BOOL CanNativeZWRClass(Class c)
         return YES;
     
     const char *name = class_getName(c);
-#ifdef COCOTRON //FIXME FIX FIX
-    unsigned char hash[64];
-    memset(hash, 0, 64);
-    strncpy(hash, name, MIN(strlen(name), 63));
-    if(HashPresentInTable(hash, 64, _MAZeroingWeakRefClassNativeWeakReferenceNotAllowedTable))
-        return NO;
-    else
-        return CanNativeZWRClass(class_getSuperclass(c));
+#ifdef COCOTRON
+    return NO;
 #else
     unsigned char hash[CC_SHA1_DIGEST_LENGTH];
     CC_SHA1(name, strlen(name), hash);
