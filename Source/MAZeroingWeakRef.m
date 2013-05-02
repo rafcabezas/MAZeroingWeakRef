@@ -226,7 +226,7 @@ static void WhileLocked(void (^block)(void))
 
 static void AddWeakRefToObject(id obj, MAZeroingWeakRef *ref)
 {
-    NSString *objStr = [NSString stringWithFormat:@"%p", objStr];
+    NSString *objStr = [NSString stringWithFormat:@"%p", obj];
     NSMutableSet *set = (NSMutableSet *)[gObjectWeakRefsMap objectForKey:objStr];
     if(!set)
     {
@@ -240,7 +240,7 @@ static void AddWeakRefToObject(id obj, MAZeroingWeakRef *ref)
 
 static void RemoveWeakRefFromObject(id obj, MAZeroingWeakRef *ref)
 {
-    NSString *objStr = [NSString stringWithFormat:@"%p", objStr];
+    NSString *objStr = [NSString stringWithFormat:@"%p", obj];
     NSMutableSet *set = (NSMutableSet *)[gObjectWeakRefsMap objectForKey:objStr];
     if (set) {
         for (NSValue *valuePtr in set) {
@@ -254,7 +254,7 @@ static void RemoveWeakRefFromObject(id obj, MAZeroingWeakRef *ref)
 
 static void ClearWeakRefsForObject(id obj)
 {
-    NSString *objStr = [NSString stringWithFormat:@"%p", objStr];
+    NSString *objStr = [NSString stringWithFormat:@"%p", obj];
     NSMutableSet *set = (NSMutableSet *)[gObjectWeakRefsMap objectForKey:objStr];
     if(set)
     {
