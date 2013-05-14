@@ -23,6 +23,11 @@
 #import <UIKit/UIDevice.h>
 #endif
 
+#ifndef NSCLog
+#define NSCLog NSLog
+#endif
+
+
 /*
  The COREFOUNDATION_HACK_LEVEL macro allows you to control how much horrible CF
  hackery is enabled. The following levels are defined:
@@ -577,7 +582,7 @@ static Class CreatePlainCustomSubclass(Class class)
 
 static void PatchKVOSubclass(Class class)
 {
-    NSLog(@"Patching KVO class %s", class_getName(class));
+    NSCLog(@"Patching KVO class %s", class_getName(class));
     Method release = class_getInstanceMethod(class, @selector(release));
     Method dealloc = class_getInstanceMethod(class, @selector(dealloc));
     
